@@ -11,7 +11,12 @@ async function readDays(): Promise<ClosingDay[]> {
   try {
     const { blobs } = await list({ prefix: BLOB_KEY });
     if (blobs.length === 0) return [];
-    const res = await fetch(blobs[0].url, { cache: "no-store" });
+    const res = await fetch(blobs[0].url, {
+      cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+      },
+    });
     return await res.json();
   } catch {
     return [];
@@ -20,7 +25,7 @@ async function readDays(): Promise<ClosingDay[]> {
 
 async function writeDays(days: ClosingDay[]): Promise<void> {
   await put(BLOB_KEY, JSON.stringify(days), {
-    access: "public",
+    access: "private",
     addRandomSuffix: false,
     contentType: "application/json",
   });
