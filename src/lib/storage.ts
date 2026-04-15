@@ -1,54 +1,41 @@
-import fs from "fs";
-import path from "path";
+import { kv } from "@vercel/kv";
 
 export interface ClosingDay {
   date: string; // YYYY-MM-DD
   reason?: string;
 }
 
-interface StorageData {
-  days: ClosingDay[];
+const KV_KEY = "closing-days";
+
+export async function getClosingDays(): Promise<ClosingDay[]> {
+  const days = await kv.get<ClosingDay[]>(KV_KEY);
+  return days ?? [];
 }
 
-const DATA_PATH = path.join(process.cwd(), "data", "closing-days.json");
-
-function read(): StorageData {
-  const raw = fs.readFileSync(DATA_PATH, "utf-8");
-  return JSON.parse(raw) as StorageData;
-}
-
-function write(data: StorageData): void {
-  fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), "utf-8");
-}
-
-export function getClosingDays(): ClosingDay[] {
-  return read().days;
-}
-
-export function addClosingDay(date: string, reason?: string): void {
-  const data = read();
-  if (!data.days.find((d) => d.date === date)) {
-    data.days.push({ date, ...(reason ? { reason } : {}) });
-    data.days.sort((a, b) => a.date.localeCompare(b.date));
-    write(data);
+export async function addClosingDay(date: string, reason?: string): Promise<void> {
+  const days = await getClosingDays();
+  if (!days.find((d) => d.date === date)) {
+    days.push({ date, ...(reason ? { reason } : {}) });
+    days.sort((a, b) => a.date.localeCompare(b.date));
+    await kv.set(KV_KEY, days);
   }
 }
 
-export function removeClosingDay(date: string): boolean {
-  const data = read();
-  const before = data.days.length;
-  data.days = data.days.filter((d) => d.date !== date);
-  if (data.days.length !== before) {
-    write(data);
+export async function removeClosingDay(date: string): Promise<boolean> {
+  const days = await getClosingDays();
+  const filtered = days.filter((d) => d.date !== date);
+  if (filtered.length !== days.length) {
+    await kv.set(KV_KEY, filtered);
     return true;
   }
   return false;
 }
 
-export function isSpecialClosingDay(dateStr: string): { closed: boolean; reason?: string } {
-  const day = read().days.find((d) => d.date === dateStr);
-  if (day) {
-    return { closed: true, reason: day.reason };
-  }
+export async function isSpecialClosingDay(
+  dateStr: string
+): Promise<{ closed: boolean; reason?: string }> {
+  const days = await getClosingDays();
+  const day = days.find((d) => d.date === dateStr);
+  if (day) return { closed: true, reason: day.reason };
   return { closed: false };
 }

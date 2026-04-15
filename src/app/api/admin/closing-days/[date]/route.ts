@@ -16,7 +16,7 @@ export async function DELETE(
   }
 
   const { date } = await params;
-  const removed = removeClosingDay(date);
+  const removed = await removeClosingDay(date);
 
   if (!removed) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(getClosingDays());
+  return NextResponse.json(await getClosingDays());
 }
 
 export async function POST(req: NextRequest) {
@@ -34,6 +34,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  addClosingDay(date, reason);
+  await addClosingDay(date, reason);
   return NextResponse.json({ ok: true }, { status: 201 });
 }

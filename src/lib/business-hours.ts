@@ -67,7 +67,7 @@ export async function isOpen(): Promise<boolean> {
   if (holiday) return false;
 
   // Special closing day
-  const { closed } = isSpecialClosingDay(dateStr);
+  const { closed } = await isSpecialClosingDay(dateStr);
   if (closed) return false;
 
   return true;
