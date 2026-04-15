@@ -35,6 +35,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  await addClosingDay(date, reason);
+  try {
+    await addClosingDay(date, reason);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true }, { status: 201 });
 }
