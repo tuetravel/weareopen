@@ -49,8 +49,12 @@ export default function AdminPage() {
       const list = await fetch("/api/admin/closing-days", { headers: headers() });
       if (list.ok) setDays(await list.json());
     } else {
-      const json = await res.json();
-      setError(json.error ?? "Failed to add day.");
+      try {
+        const json = await res.json();
+        setError(json.error ?? `Server error ${res.status}`);
+      } catch {
+        setError(`Server error ${res.status} — check Vercel logs`);
+      }
     }
   }
 
