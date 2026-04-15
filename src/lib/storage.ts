@@ -27,6 +27,7 @@ async function writeDays(days: ClosingDay[]): Promise<void> {
   await put(BLOB_KEY, JSON.stringify(days), {
     access: "private",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
   });
 }
