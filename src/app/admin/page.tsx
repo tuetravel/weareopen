@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 
 interface ClosingDay {
   date: string;
@@ -9,28 +9,29 @@ interface ClosingDay {
 
 export default function AdminPage() {
   const [apiKey, setApiKey] = useState("");
+  const [connected, setConnected] = useState(false);
   const [days, setDays] = useState<ClosingDay[]>([]);
   const [newDate, setNewDate] = useState("");
   const [newReason, setNewReason] = useState("");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
 
-  const fetchDays = useCallback(async () => {
-    if (!apiKey) return;
+  function headers() {
+    return { authorization: `Bearer ${apiKey}` };
+  }
+
+  async function handleConnect(e: React.FormEvent) {
+    e.preventDefault();
     setError("");
-    const res = await fetch("/api/admin/closing-days", {
-      headers: { "x-api-key": apiKey },
-    });
+    setStatus("");
+    const res = await fetch("/api/admin/closing-days", { headers: headers() });
     if (res.ok) {
       setDays(await res.json());
+      setConnected(true);
     } else {
-      setError("Failed to load — check your API key.");
+      setError("Wrong API key.");
     }
-  }, [apiKey]);
-
-  useEffect(() => {
-    if (apiKey) fetchDays();
-  }, [apiKey, fetchDays]);
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -38,14 +39,15 @@ export default function AdminPage() {
     setStatus("");
     const res = await fetch("/api/admin/closing-days", {
       method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": apiKey },
+      headers: { "content-type": "application/json", ...headers() },
       body: JSON.stringify({ date: newDate, reason: newReason || undefined }),
     });
     if (res.ok) {
       setNewDate("");
       setNewReason("");
       setStatus("Day added.");
-      fetchDays();
+      const list = await fetch("/api/admin/closing-days", { headers: headers() });
+      if (list.ok) setDays(await list.json());
     } else {
       const json = await res.json();
       setError(json.error ?? "Failed to add day.");
@@ -57,30 +59,45 @@ export default function AdminPage() {
     setStatus("");
     const res = await fetch(`/api/admin/closing-days/${date}`, {
       method: "DELETE",
-      headers: { "x-api-key": apiKey },
+      headers: headers(),
     });
     if (res.ok) {
       setStatus(`Removed ${date}.`);
-      fetchDays();
+      setDays((prev) => prev.filter((d) => d.date !== date));
     } else {
-      setError("Failed to remove day.");
+      setError("Failed to remove.");
     }
+  }
+
+  if (!connected) {
+    return (
+      <main className="max-w-sm mx-auto p-8 font-sans">
+        <h1 className="text-2xl font-bold mb-6">Admin</h1>
+        <form onSubmit={handleConnect} className="space-y-3">
+          <label className="block text-sm font-medium">API Key</label>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Enter API key"
+            required
+            className="w-full border rounded px-3 py-2 text-sm"
+          />
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          <button
+            type="submit"
+            className="w-full bg-black text-white rounded px-4 py-2 text-sm hover:bg-gray-800"
+          >
+            Connect
+          </button>
+        </form>
+      </main>
+    );
   }
 
   return (
     <main className="max-w-xl mx-auto p-8 font-sans">
       <h1 className="text-2xl font-bold mb-6">Special Closing Days</h1>
-
-      <div className="mb-6">
-        <label className="block text-sm font-medium mb-1">API Key</label>
-        <input
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="Enter admin API key"
-          className="w-full border rounded px-3 py-2 text-sm"
-        />
-      </div>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
       {status && <p className="text-green-600 text-sm mb-4">{status}</p>}

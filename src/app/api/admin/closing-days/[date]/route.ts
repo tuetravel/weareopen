@@ -4,7 +4,8 @@ import { removeClosingDay } from "@/lib/storage";
 function isAuthorized(req: NextRequest): boolean {
   const apiKey = process.env.ADMIN_API_KEY;
   if (!apiKey) return false;
-  return req.headers.get("x-api-key") === apiKey;
+  const auth = req.headers.get("authorization");
+  return auth === `Bearer ${apiKey}`;
 }
 
 export async function DELETE(
