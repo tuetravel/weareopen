@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getClosingDays, addClosingDay } from "@/lib/storage";
 
@@ -5,7 +6,10 @@ function isAuthorized(req: NextRequest): boolean {
   const apiKey = process.env.ADMIN_API_KEY;
   if (!apiKey) return false;
   const auth = req.headers.get("authorization");
-  return auth === `Bearer ${apiKey}`;
+  if (!auth) return false;
+  const expected = `Bearer ${apiKey}`;
+  if (auth.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(auth), Buffer.from(expected));
 }
 
 export async function GET(req: NextRequest) {
