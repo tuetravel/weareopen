@@ -5,10 +5,11 @@ vi.mock("@/lib/kalendarium", () => ({
 }));
 vi.mock("@/lib/storage", () => ({
   isSpecialClosingDay: vi.fn(),
+  getOpeningHours: vi.fn(),
 }));
 
 import { isPublicHoliday } from "@/lib/kalendarium";
-import { isSpecialClosingDay } from "@/lib/storage";
+import { isSpecialClosingDay, getOpeningHours } from "@/lib/storage";
 import { isOpen } from "@/lib/business-hours";
 
 // January 2026: Copenhagen is CET (UTC+1)
@@ -21,6 +22,7 @@ describe("isOpen", () => {
     vi.useFakeTimers();
     vi.mocked(isPublicHoliday).mockResolvedValue({ holiday: false });
     vi.mocked(isSpecialClosingDay).mockResolvedValue({ closed: false });
+    vi.mocked(getOpeningHours).mockResolvedValue({ timezone: "Europe/Copenhagen", openHour: 8, closeHour: 16 });
   });
 
   afterEach(() => {
@@ -76,5 +78,25 @@ describe("isOpen", () => {
     await isOpen();
     expect(isPublicHoliday).not.toHaveBeenCalled();
     expect(isSpecialClosingDay).not.toHaveBeenCalled();
+  });
+
+  it("returns false when current hour is before custom openHour", async () => {
+    vi.setSystemTime(MON_10AM); // 10:00 CET
+    vi.mocked(getOpeningHours).mockResolvedValue({
+      timezone: "Europe/Copenhagen",
+      openHour: 11,
+      closeHour: 16,
+    });
+    expect(await isOpen()).toBe(false);
+  });
+
+  it("returns false when current hour equals custom closeHour", async () => {
+    vi.setSystemTime(new Date("2026-01-05T13:00:00Z")); // 14:00 CET
+    vi.mocked(getOpeningHours).mockResolvedValue({
+      timezone: "Europe/Copenhagen",
+      openHour: 8,
+      closeHour: 14,
+    });
+    expect(await isOpen()).toBe(false);
   });
 });

@@ -7,10 +7,20 @@ interface ClosingDay {
   reason?: string;
 }
 
+interface OpeningHours {
+  timezone: string;
+  openHour: number;
+  closeHour: number;
+}
+
 export default function AdminPage() {
   const [apiKey, setApiKey] = useState("");
   const [connected, setConnected] = useState(false);
   const [days, setDays] = useState<ClosingDay[]>([]);
+  const [hours, setHours] = useState<OpeningHours | null>(null);
+  const [tzInput, setTzInput] = useState("");
+  const [openInput, setOpenInput] = useState("");
+  const [closeInput, setCloseInput] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newReason, setNewReason] = useState("");
   const [error, setError] = useState("");
@@ -24,12 +34,47 @@ export default function AdminPage() {
     e.preventDefault();
     setError("");
     setStatus("");
-    const res = await fetch("/api/admin/closing-days", { headers: headers() });
-    if (res.ok) {
-      setDays(await res.json());
+    const [daysRes, hoursRes] = await Promise.all([
+      fetch("/api/admin/closing-days", { headers: headers() }),
+      fetch("/api/admin/opening-hours", { headers: headers() }),
+    ]);
+    if (daysRes.ok && hoursRes.ok) {
+      setDays(await daysRes.json());
+      const h: OpeningHours = await hoursRes.json();
+      setHours(h);
+      setTzInput(h.timezone);
+      setOpenInput(String(h.openHour));
+      setCloseInput(String(h.closeHour));
       setConnected(true);
     } else {
       setError("Wrong API key.");
+    }
+  }
+
+  async function handleSaveHours(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setStatus("");
+    const res = await fetch("/api/admin/opening-hours", {
+      method: "PUT",
+      headers: { "content-type": "application/json", ...headers() },
+      body: JSON.stringify({
+        timezone: tzInput,
+        openHour: parseInt(openInput, 10),
+        closeHour: parseInt(closeInput, 10),
+      }),
+    });
+    if (res.ok) {
+      const saved: OpeningHours = await res.json();
+      setHours(saved);
+      setStatus("Opening hours saved.");
+    } else {
+      try {
+        const json = await res.json();
+        setError(json.error ?? `Server error ${res.status}`);
+      } catch {
+        setError(`Server error ${res.status} — check Vercel logs`);
+      }
     }
   }
 
@@ -101,10 +146,57 @@ export default function AdminPage() {
 
   return (
     <main className="max-w-xl mx-auto p-8 font-sans">
-      <h1 className="text-2xl font-bold mb-6">Special Closing Days</h1>
+      <h1 className="text-2xl font-bold mb-6">Admin</h1>
 
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
       {status && <p className="text-green-600 text-sm mb-4">{status}</p>}
+
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold mb-1">Opening Hours</h2>
+        {hours && (
+          <p className="text-sm text-gray-500 mb-3">
+            Current: {hours.openHour}:00 – {hours.closeHour}:00 ({hours.timezone})
+          </p>
+        )}
+        <form onSubmit={handleSaveHours} className="space-y-3">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={tzInput}
+              onChange={(e) => setTzInput(e.target.value)}
+              placeholder="Timezone (e.g. Europe/Copenhagen)"
+              required
+              className="border rounded px-3 py-2 text-sm flex-1"
+            />
+            <input
+              type="number"
+              value={openInput}
+              onChange={(e) => setOpenInput(e.target.value)}
+              placeholder="Open"
+              min={0}
+              max={23}
+              required
+              className="border rounded px-3 py-2 text-sm w-20"
+            />
+            <input
+              type="number"
+              value={closeInput}
+              onChange={(e) => setCloseInput(e.target.value)}
+              placeholder="Close"
+              min={0}
+              max={23}
+              required
+              className="border rounded px-3 py-2 text-sm w-20"
+            />
+            <button
+              type="submit"
+              className="bg-black text-white rounded px-4 py-2 text-sm hover:bg-gray-800"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </section>
 
       <form onSubmit={handleAdd} className="mb-8 space-y-3">
         <h2 className="text-lg font-semibold">Add Closing Day</h2>

@@ -11,6 +11,8 @@ import {
   getClosingDays,
   isSpecialClosingDay,
   removeClosingDay,
+  getOpeningHours,
+  setOpeningHours,
 } from "@/lib/storage";
 
 const mockFetch = vi.fn();
@@ -110,5 +112,50 @@ describe("isSpecialClosingDay", () => {
   it("returns closed:false when date does not match", async () => {
     mockEmpty();
     expect(await isSpecialClosingDay("2026-03-02")).toEqual({ closed: false });
+  });
+});
+
+describe("getOpeningHours", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns defaults when no blob exists", async () => {
+    mockEmpty();
+    expect(await getOpeningHours()).toEqual({
+      timezone: "Europe/Copenhagen",
+      openHour: 8,
+      closeHour: 16,
+    });
+  });
+
+  it("returns stored settings from blob", async () => {
+    const settings = { timezone: "America/New_York", openHour: 9, closeHour: 17 };
+    mockBlob(settings as any);
+    expect(await getOpeningHours()).toEqual(settings);
+  });
+
+  it("returns defaults on fetch error", async () => {
+    vi.mocked(list).mockRejectedValue(new Error("network error"));
+    expect(await getOpeningHours()).toEqual({
+      timezone: "Europe/Copenhagen",
+      openHour: 8,
+      closeHour: 16,
+    });
+  });
+});
+
+describe("setOpeningHours", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(put).mockResolvedValue({} as any);
+  });
+
+  it("writes settings to the correct blob key", async () => {
+    const settings = { timezone: "Europe/London", openHour: 9, closeHour: 17 };
+    await setOpeningHours(settings);
+    expect(put).toHaveBeenCalledWith(
+      "opening-hours.json",
+      JSON.stringify(settings),
+      expect.objectContaining({ access: "private" })
+    );
   });
 });

@@ -1,14 +1,10 @@
 import { isPublicHoliday } from "./kalendarium";
-import { isSpecialClosingDay } from "./storage";
-
-const TIMEZONE = "Europe/Copenhagen";
-const OPEN_HOUR = 8;   // 08:00
-const CLOSE_HOUR = 16; // 16:00
+import { isSpecialClosingDay, getOpeningHours } from "./storage";
 
 /**
- * Returns the current date/time broken down in the Copenhagen timezone.
+ * Returns the current date/time broken down in the given timezone.
  */
-function getCopenhagenParts(): {
+function getTimeParts(timezone: string): {
   year: number;
   month: number;
   day: number;
@@ -20,7 +16,7 @@ function getCopenhagenParts(): {
   const now = new Date();
 
   const fmt = (part: Intl.DateTimeFormatPartTypes) =>
-    new Intl.DateTimeFormat("en-GB", { timeZone: TIMEZONE, [part]: "numeric" })
+    new Intl.DateTimeFormat("en-GB", { timeZone: timezone, [part]: "numeric" })
       .formatToParts(now)
       .find((p) => p.type === part)?.value ?? "0";
 
@@ -32,7 +28,7 @@ function getCopenhagenParts(): {
 
   // Derive weekday from a locale-agnostic approach
   const weekdayStr = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
+    timeZone: timezone,
     weekday: "short",
   }).format(now);
   const weekdayMap: Record<string, number> = {
@@ -49,24 +45,20 @@ function getCopenhagenParts(): {
  * Returns true if the business is currently open.
  * Checks (in order):
  *  1. Day of week (Mon–Fri only)
- *  2. Time window (08:00–16:00 Copenhagen)
+ *  2. Time window (configurable, stored in Vercel Blob)
  *  3. Danish public holiday via Kalendarium API
  *  4. Special closing day from local JSON store
  */
 export async function isOpen(): Promise<boolean> {
-  const { weekday, hour, dateStr } = getCopenhagenParts();
+  const { timezone, openHour, closeHour } = await getOpeningHours();
+  const { weekday, hour, dateStr } = getTimeParts(timezone);
 
-  // Weekend
   if (weekday === 0 || weekday === 6) return false;
+  if (hour < openHour || hour >= closeHour) return false;
 
-  // Outside business hours
-  if (hour < OPEN_HOUR || hour >= CLOSE_HOUR) return false;
-
-  // Public holiday
   const { holiday } = await isPublicHoliday(dateStr);
   if (holiday) return false;
 
-  // Special closing day
   const { closed } = await isSpecialClosingDay(dateStr);
   if (closed) return false;
 
