@@ -11,6 +11,7 @@ interface OpeningHours {
   timezone: string;
   openHour: number;
   closeHour: number;
+  cacheTtlMinutes: number;
 }
 
 export default function AdminPage() {
@@ -21,6 +22,7 @@ export default function AdminPage() {
   const [tzInput, setTzInput] = useState("");
   const [openInput, setOpenInput] = useState("");
   const [closeInput, setCloseInput] = useState("");
+  const [cacheInput, setCacheInput] = useState("");
   const [newDate, setNewDate] = useState("");
   const [newReason, setNewReason] = useState("");
   const [error, setError] = useState("");
@@ -45,6 +47,7 @@ export default function AdminPage() {
       setTzInput(h.timezone);
       setOpenInput(String(h.openHour));
       setCloseInput(String(h.closeHour));
+      setCacheInput(String(h.cacheTtlMinutes));
       setConnected(true);
     } else {
       setError("Wrong API key.");
@@ -62,11 +65,13 @@ export default function AdminPage() {
         timezone: tzInput,
         openHour: parseInt(openInput, 10),
         closeHour: parseInt(closeInput, 10),
+        cacheTtlMinutes: parseInt(cacheInput, 10),
       }),
     });
     if (res.ok) {
       const saved: OpeningHours = await res.json();
       setHours(saved);
+      setCacheInput(String(saved.cacheTtlMinutes));
       setStatus("Opening hours saved.");
     } else {
       try {
@@ -155,7 +160,7 @@ export default function AdminPage() {
         <h2 className="text-lg font-semibold mb-1">Opening Hours</h2>
         {hours && (
           <p className="text-sm text-gray-500 mb-3">
-            Current: {hours.openHour}:00 – {hours.closeHour}:00 ({hours.timezone})
+            Current: {hours.openHour}:00 – {hours.closeHour}:00 ({hours.timezone}) · cache {hours.cacheTtlMinutes === 0 ? "off" : `${hours.cacheTtlMinutes} min`}
           </p>
         )}
         <form onSubmit={handleSaveHours} className="space-y-3">
@@ -187,6 +192,16 @@ export default function AdminPage() {
               max={23}
               required
               className="border rounded px-3 py-2 text-sm w-20"
+            />
+            <input
+              type="number"
+              value={cacheInput}
+              onChange={(e) => setCacheInput(e.target.value)}
+              placeholder="Cache (min)"
+              min={0}
+              max={60}
+              required
+              className="border rounded px-3 py-2 text-sm w-24"
             />
             <button
               type="submit"

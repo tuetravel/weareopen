@@ -43,14 +43,14 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { timezone?: unknown; openHour?: unknown; closeHour?: unknown };
+  let body: { timezone?: unknown; openHour?: unknown; closeHour?: unknown; cacheTtlMinutes?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { timezone, openHour, closeHour } = body;
+  const { timezone, openHour, closeHour, cacheTtlMinutes } = body;
 
   if (typeof timezone !== "string" || !isValidTimezone(timezone)) {
     return NextResponse.json(
@@ -76,8 +76,14 @@ export async function PUT(req: NextRequest) {
       { status: 400 }
     );
   }
+  if (typeof cacheTtlMinutes !== "number" || !Number.isInteger(cacheTtlMinutes) || cacheTtlMinutes < 0 || cacheTtlMinutes > 60) {
+    return NextResponse.json(
+      { error: "cacheTtlMinutes must be an integer between 0 and 60" },
+      { status: 400 }
+    );
+  }
 
-  const hours: OpeningHours = { timezone, openHour, closeHour };
+  const hours: OpeningHours = { timezone, openHour, closeHour, cacheTtlMinutes };
   try {
     await setOpeningHours(hours);
   } catch (err) {

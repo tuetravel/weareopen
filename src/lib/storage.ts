@@ -11,12 +11,14 @@ export interface OpeningHours {
   timezone: string;
   openHour: number;
   closeHour: number;
+  cacheTtlMinutes: number; // 0 = no cache
 }
 
 const DEFAULT_OPENING_HOURS: OpeningHours = {
   timezone: "Europe/Copenhagen",
   openHour: 8,
   closeHour: 16,
+  cacheTtlMinutes: 5,
 };
 
 const OPENING_HOURS_KEY = "opening-hours.json";
@@ -79,9 +81,9 @@ export async function isSpecialClosingDay(
 }
 
 // Module-level cache — avoids a blob read on every /api/open call.
+// TTL is set by the stored cacheTtlMinutes value (0 = no cache).
 // Invalidated immediately when settings are saved via setOpeningHours.
 let openingHoursCache: { value: OpeningHours; expiresAt: number } | null = null;
-const OPENING_HOURS_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 async function readOpeningHours(): Promise<OpeningHours> {
   if (openingHoursCache && Date.now() < openingHoursCache.expiresAt) {
@@ -90,7 +92,7 @@ async function readOpeningHours(): Promise<OpeningHours> {
   try {
     const { blobs } = await list({ prefix: OPENING_HOURS_KEY });
     if (blobs.length === 0) {
-      openingHoursCache = { value: DEFAULT_OPENING_HOURS, expiresAt: Date.now() + OPENING_HOURS_TTL_MS };
+      openingHoursCache = { value: DEFAULT_OPENING_HOURS, expiresAt: Date.now() + DEFAULT_OPENING_HOURS.cacheTtlMinutes * 60_000 };
       return DEFAULT_OPENING_HOURS;
     }
     const res = await fetch(blobs[0].url, {
@@ -98,7 +100,8 @@ async function readOpeningHours(): Promise<OpeningHours> {
       headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
     });
     const value: OpeningHours = await res.json();
-    openingHoursCache = { value, expiresAt: Date.now() + OPENING_HOURS_TTL_MS };
+    const ttlMs = value.cacheTtlMinutes * 60_000;
+    openingHoursCache = ttlMs > 0 ? { value, expiresAt: Date.now() + ttlMs } : null;
     return value;
   } catch {
     return DEFAULT_OPENING_HOURS;

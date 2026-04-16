@@ -13,7 +13,7 @@ import { GET, PUT } from "@/app/api/admin/opening-hours/route";
 
 const API_KEY = "test-secret";
 const AUTH = { Authorization: `Bearer ${API_KEY}` };
-const DEFAULT_HOURS = { timezone: "Europe/Copenhagen", openHour: 8, closeHour: 16 };
+const DEFAULT_HOURS = { timezone: "Europe/Copenhagen", openHour: 8, closeHour: 16, cacheTtlMinutes: 5 };
 
 function req(method: string, headers: Record<string, string> = {}, body?: unknown) {
   return new NextRequest("http://localhost/api/admin/opening-hours", {
@@ -101,7 +101,23 @@ describe("PUT /api/admin/opening-hours", () => {
   });
 
   it("accepts a valid non-default timezone", async () => {
-    const body = { timezone: "America/New_York", openHour: 9, closeHour: 17 };
+    const body = { timezone: "America/New_York", openHour: 9, closeHour: 17, cacheTtlMinutes: 5 };
+    const res = await PUT(req("PUT", AUTH, body));
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 400 for non-integer cacheTtlMinutes", async () => {
+    const res = await PUT(req("PUT", AUTH, { ...DEFAULT_HOURS, cacheTtlMinutes: 2.5 }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for cacheTtlMinutes out of range", async () => {
+    const res = await PUT(req("PUT", AUTH, { ...DEFAULT_HOURS, cacheTtlMinutes: 61 }));
+    expect(res.status).toBe(400);
+  });
+
+  it("accepts cacheTtlMinutes of 0 (no cache)", async () => {
+    const body = { ...DEFAULT_HOURS, cacheTtlMinutes: 0 };
     const res = await PUT(req("PUT", AUTH, body));
     expect(res.status).toBe(200);
   });
