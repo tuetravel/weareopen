@@ -13,6 +13,7 @@ import {
   removeClosingDay,
   getOpeningHours,
   setOpeningHours,
+  _clearOpeningHoursCache,
 } from "@/lib/storage";
 
 const mockFetch = vi.fn();
@@ -116,7 +117,10 @@ describe("isSpecialClosingDay", () => {
 });
 
 describe("getOpeningHours", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _clearOpeningHoursCache();
+  });
 
   it("returns defaults when no blob exists", async () => {
     mockEmpty();
@@ -146,6 +150,7 @@ describe("getOpeningHours", () => {
 describe("setOpeningHours", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _clearOpeningHoursCache();
     vi.mocked(put).mockResolvedValue({} as any);
   });
 
@@ -157,5 +162,17 @@ describe("setOpeningHours", () => {
       JSON.stringify(settings),
       expect.objectContaining({ access: "private" })
     );
+  });
+
+  it("invalidates the cache so next read hits the blob", async () => {
+    // Populate cache with defaults
+    mockEmpty();
+    await getOpeningHours();
+    // Write new settings — clears cache
+    const newSettings = { timezone: "America/New_York", openHour: 9, closeHour: 17 };
+    await setOpeningHours(newSettings);
+    // Next read should go to blob, not return stale cached defaults
+    mockBlob(newSettings as any);
+    expect(await getOpeningHours()).toEqual(newSettings);
   });
 });

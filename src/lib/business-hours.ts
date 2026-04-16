@@ -41,26 +41,30 @@ function getTimeParts(timezone: string): {
   return { year, month, day, weekday, hour, minute, dateStr };
 }
 
+export type OpenStatus =
+  | { open: true }
+  | { open: false; reason: "weekend" | "outside hours" | "public holiday" | "closing day"; note?: string };
+
 /**
- * Returns true if the business is currently open.
+ * Returns the current open/closed status with a reason when closed.
  * Checks (in order):
  *  1. Day of week (Mon–Fri only)
  *  2. Time window (configurable, stored in Vercel Blob)
  *  3. Danish public holiday via Kalendarium API
- *  4. Special closing day from local JSON store
+ *  4. Special closing day from Vercel Blob store
  */
-export async function isOpen(): Promise<boolean> {
+export async function isOpen(): Promise<OpenStatus> {
   const { timezone, openHour, closeHour } = await getOpeningHours();
   const { weekday, hour, dateStr } = getTimeParts(timezone);
 
-  if (weekday === 0 || weekday === 6) return false;
-  if (hour < openHour || hour >= closeHour) return false;
+  if (weekday === 0 || weekday === 6) return { open: false, reason: "weekend" };
+  if (hour < openHour || hour >= closeHour) return { open: false, reason: "outside hours" };
 
-  const { holiday } = await isPublicHoliday(dateStr);
-  if (holiday) return false;
+  const { holiday, name } = await isPublicHoliday(dateStr);
+  if (holiday) return { open: false, reason: "public holiday", ...(name ? { note: name } : {}) };
 
-  const { closed } = await isSpecialClosingDay(dateStr);
-  if (closed) return false;
+  const { closed, reason } = await isSpecialClosingDay(dateStr);
+  if (closed) return { open: false, reason: "closing day", ...(reason ? { note: reason } : {}) };
 
-  return true;
+  return { open: true };
 }

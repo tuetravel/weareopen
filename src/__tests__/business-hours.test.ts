@@ -29,41 +29,47 @@ describe("isOpen", () => {
     vi.useRealTimers();
   });
 
-  it("returns true on a weekday during business hours", async () => {
+  it("returns open:true on a weekday during business hours", async () => {
     vi.setSystemTime(MON_10AM);
-    expect(await isOpen()).toBe(true);
+    expect(await isOpen()).toEqual({ open: true });
   });
 
-  it("returns false on Saturday", async () => {
+  it("returns open:false with reason 'weekend' on Saturday", async () => {
     vi.setSystemTime(new Date("2026-01-03T09:00:00Z")); // Sat
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "weekend" });
   });
 
-  it("returns false on Sunday", async () => {
+  it("returns open:false with reason 'weekend' on Sunday", async () => {
     vi.setSystemTime(new Date("2026-01-04T09:00:00Z")); // Sun
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "weekend" });
   });
 
-  it("returns false before 08:00 Copenhagen time", async () => {
+  it("returns open:false with reason 'outside hours' before 08:00", async () => {
     vi.setSystemTime(new Date("2026-01-05T06:30:00Z")); // 07:30 CET
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "outside hours" });
   });
 
-  it("returns false at 16:00 Copenhagen time", async () => {
+  it("returns open:false with reason 'outside hours' at 16:00", async () => {
     vi.setSystemTime(new Date("2026-01-05T15:00:00Z")); // 16:00 CET
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "outside hours" });
   });
 
-  it("returns false on a public holiday", async () => {
+  it("returns open:false with reason 'public holiday' and note", async () => {
     vi.setSystemTime(MON_10AM);
     vi.mocked(isPublicHoliday).mockResolvedValue({ holiday: true, name: "New Year" });
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "public holiday", note: "New Year" });
   });
 
-  it("returns false on a special closing day", async () => {
+  it("returns open:false with reason 'closing day' and note", async () => {
     vi.setSystemTime(MON_10AM);
     vi.mocked(isSpecialClosingDay).mockResolvedValue({ closed: true, reason: "Team offsite" });
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "closing day", note: "Team offsite" });
+  });
+
+  it("returns open:false with reason 'closing day' without note when no reason set", async () => {
+    vi.setSystemTime(MON_10AM);
+    vi.mocked(isSpecialClosingDay).mockResolvedValue({ closed: true });
+    expect(await isOpen()).toEqual({ open: false, reason: "closing day" });
   });
 
   it("does not call external APIs on weekends (short-circuit)", async () => {
@@ -87,7 +93,7 @@ describe("isOpen", () => {
       openHour: 11,
       closeHour: 16,
     });
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "outside hours" });
   });
 
   it("returns false when current hour equals custom closeHour", async () => {
@@ -97,6 +103,6 @@ describe("isOpen", () => {
       openHour: 8,
       closeHour: 14,
     });
-    expect(await isOpen()).toBe(false);
+    expect(await isOpen()).toEqual({ open: false, reason: "outside hours" });
   });
 });

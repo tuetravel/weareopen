@@ -78,15 +78,28 @@ export async function isSpecialClosingDay(
   return { closed: false };
 }
 
+// Module-level cache — avoids a blob read on every /api/open call.
+// Invalidated immediately when settings are saved via setOpeningHours.
+let openingHoursCache: { value: OpeningHours; expiresAt: number } | null = null;
+const OPENING_HOURS_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 async function readOpeningHours(): Promise<OpeningHours> {
+  if (openingHoursCache && Date.now() < openingHoursCache.expiresAt) {
+    return openingHoursCache.value;
+  }
   try {
     const { blobs } = await list({ prefix: OPENING_HOURS_KEY });
-    if (blobs.length === 0) return DEFAULT_OPENING_HOURS;
+    if (blobs.length === 0) {
+      openingHoursCache = { value: DEFAULT_OPENING_HOURS, expiresAt: Date.now() + OPENING_HOURS_TTL_MS };
+      return DEFAULT_OPENING_HOURS;
+    }
     const res = await fetch(blobs[0].url, {
       cache: "no-store",
       headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
     });
-    return await res.json();
+    const value: OpeningHours = await res.json();
+    openingHoursCache = { value, expiresAt: Date.now() + OPENING_HOURS_TTL_MS };
+    return value;
   } catch {
     return DEFAULT_OPENING_HOURS;
   }
@@ -103,4 +116,10 @@ export async function setOpeningHours(hours: OpeningHours): Promise<void> {
     allowOverwrite: true,
     contentType: "application/json",
   });
+  openingHoursCache = null; // invalidate so next read picks up the new value
+}
+
+/** For testing only — resets the in-memory cache. */
+export function _clearOpeningHoursCache(): void {
+  openingHoursCache = null;
 }
