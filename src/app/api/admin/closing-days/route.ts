@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { isRateLimited } from "@/lib/rate-limit";
 import { getClosingDays, addClosingDay } from "@/lib/storage";
 
+export const dynamic = "force-dynamic";
+
 const REASON_MAX_LENGTH = 500;
 
 function isAuthorized(req: NextRequest): boolean {
@@ -23,7 +25,9 @@ export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(await getClosingDays());
+  return NextResponse.json(await getClosingDays(), {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export async function POST(req: NextRequest) {
