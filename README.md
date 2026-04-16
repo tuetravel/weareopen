@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WeAreOpen
+
+A high-precision "Business Open" status service tailored for Copenhagen-based businesses. It intelligently combines standard business hours, Danish public holidays, and custom closing days to provide a reliable status API.
+
+## Features
+
+- **Smart Status Logic**: Automatically determines if the business is open based on:
+  - Standard Business Hours (Mon–Fri, 08:00–16:00 Europe/Copenhagen).
+  - Danish Public Holidays (via Kalendarium API integration).
+  - Custom Special Closing Days (manually managed via Admin).
+- **Public API**: Extremely simple `GET /api/open` endpoint returning a boolean.
+- **Admin Dashboard**: Secure UI for managing special closing days.
+- **Production-Ready Security**:
+  - API Key protection for admin endpoints using timing-safe comparisons.
+  - Built-in rate limiting.
+  - Fail-open integration with external holiday APIs.
+- **Modern Tech Stack**: Built with Next.js 16, React 19, Tailwind CSS 4, and TypeScript.
+
+## Tech Stack
+
+- **Framework**: [Next.js 16 (App Router)](https://nextjs.org)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com)
+- **Database/Persistence**: [Vercel Blob](https://vercel.com/storage/blob)
+- **Testing**: [Vitest](https://vitest.dev)
+- **Runtime**: Node.js
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 20+
+- A Vercel account (for Blob storage)
+
+### Installation
+
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up your environment variables:
+   Copy `env.example` to `.env.local` and fill in the values:
+   - `ADMIN_API_KEY`: A secure string for authorizing admin actions.
+   - `BLOB_READ_WRITE_TOKEN`: Your Vercel Blob token.
+
+### Development
+
+Run the development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Testing
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run the test suite:
+```bash
+npm run test
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API Documentation
 
-## Learn More
+### Public API
 
-To learn more about Next.js, take a look at the following resources:
+#### `GET /api/open`
+Returns `true` if the business is currently open, `false` otherwise.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Admin API
+*Requires Header: `Authorization: Bearer <ADMIN_API_KEY>`*
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+#### `GET /api/admin/closing-days`
+List all scheduled special closing days.
 
-## Deploy on Vercel
+#### `POST /api/admin/closing-days`
+Add a new closing day.
+**Body:** `{ "date": "YYYY-MM-DD", "reason": "Optional reason" }`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### `DELETE /api/admin/closing-days/[date]`
+Remove a scheduled closing day.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+Private / Internal Project.
