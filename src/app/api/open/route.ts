@@ -1,18 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { isOpen } from "@/lib/business-hours";
 
 export const dynamic = "force-dynamic";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "https://www.ase.dk",
-  "Access-Control-Allow-Methods": "GET",
-};
+const ALLOWED_ORIGINS = new Set([
+  "https://www.ase.dk",
+  "https://www-test.ase.dk",
+]);
 
-export async function GET() {
-  const status = await isOpen();
-  return NextResponse.json(status, { headers: CORS_HEADERS });
+function corsHeaders(req: NextRequest): Record<string, string> {
+  const origin = req.headers.get("origin") ?? "";
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "",
+    "Access-Control-Allow-Methods": "GET",
+  };
 }
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+export async function GET(req: NextRequest) {
+  const status = await isOpen();
+  return NextResponse.json(status, { headers: corsHeaders(req) });
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new Response(null, { status: 204, headers: corsHeaders(req) });
 }
