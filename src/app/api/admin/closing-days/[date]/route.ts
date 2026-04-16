@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { isRateLimited } from "@/lib/rate-limit";
 import { removeClosingDay } from "@/lib/storage";
 
 function isAuthorized(req: NextRequest): boolean {
@@ -16,6 +17,10 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ date: string }> }
 ) {
+  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
+  if (isRateLimited(ip)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
