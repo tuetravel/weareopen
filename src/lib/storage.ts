@@ -6,6 +6,7 @@ export interface ClosingDay {
 }
 
 const BLOB_KEY = "closing-days.json";
+const CLOSING_DAYS_CACHE_TTL_MS = 5 * 60_000; // 5 minutes
 
 export interface OpeningHours {
   timezone: string;
@@ -23,17 +24,27 @@ const DEFAULT_OPENING_HOURS: OpeningHours = {
 
 const OPENING_HOURS_KEY = "opening-hours.json";
 
+let closingDaysCache: { value: ClosingDay[]; expiresAt: number } | null = null;
+
 async function readDays(): Promise<ClosingDay[]> {
+  if (closingDaysCache && Date.now() < closingDaysCache.expiresAt) {
+    return closingDaysCache.value;
+  }
   try {
     const { blobs } = await list({ prefix: BLOB_KEY });
-    if (blobs.length === 0) return [];
+    if (blobs.length === 0) {
+      closingDaysCache = { value: [], expiresAt: Date.now() + CLOSING_DAYS_CACHE_TTL_MS };
+      return [];
+    }
     const res = await fetch(blobs[0].url, {
       cache: "no-store",
       headers: {
         Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
       },
     });
-    return await res.json();
+    const value: ClosingDay[] = await res.json();
+    closingDaysCache = { value, expiresAt: Date.now() + CLOSING_DAYS_CACHE_TTL_MS };
+    return value;
   } catch {
     return [];
   }
@@ -46,6 +57,7 @@ async function writeDays(days: ClosingDay[]): Promise<void> {
     allowOverwrite: true,
     contentType: "application/json",
   });
+  closingDaysCache = null;
 }
 
 export async function getClosingDays(): Promise<ClosingDay[]> {
@@ -122,7 +134,11 @@ export async function setOpeningHours(hours: OpeningHours): Promise<void> {
   openingHoursCache = null; // invalidate so next read picks up the new value
 }
 
-/** For testing only — resets the in-memory cache. */
+/** For testing only — resets the in-memory caches. */
 export function _clearOpeningHoursCache(): void {
   openingHoursCache = null;
+}
+
+export function _clearClosingDaysCache(): void {
+  closingDaysCache = null;
 }
