@@ -131,7 +131,7 @@ describe("getOpeningHours", () => {
       timezone: "Europe/Copenhagen",
       openHour: 8,
       closeHour: 16,
-      cacheTtlMinutes: 5,
+      cacheTtlMinutes: 60,
     });
   });
 
@@ -147,7 +147,7 @@ describe("getOpeningHours", () => {
       timezone: "Europe/Copenhagen",
       openHour: 8,
       closeHour: 16,
-      cacheTtlMinutes: 5,
+      cacheTtlMinutes: 60,
     });
   });
 });
