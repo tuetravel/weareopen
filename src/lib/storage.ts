@@ -6,7 +6,7 @@ export interface ClosingDay {
 }
 
 const BLOB_KEY = "closing-days.json";
-const CLOSING_DAYS_CACHE_TTL_MS = 5 * 60_000; // 5 minutes
+const CLOSING_DAYS_CACHE_TTL_MS = 60 * 60_000; // 60 minutes
 
 export interface OpeningHours {
   timezone: string;
@@ -19,7 +19,7 @@ const DEFAULT_OPENING_HOURS: OpeningHours = {
   timezone: "Europe/Copenhagen",
   openHour: 8,
   closeHour: 16,
-  cacheTtlMinutes: 5,
+  cacheTtlMinutes: 60,
 };
 
 const OPENING_HOURS_KEY = "opening-hours.json";
