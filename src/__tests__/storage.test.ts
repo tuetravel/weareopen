@@ -14,6 +14,7 @@ import {
   getOpeningHours,
   setOpeningHours,
   _clearOpeningHoursCache,
+  _clearClosingDaysCache,
 } from "@/lib/storage";
 
 const mockFetch = vi.fn();
@@ -29,7 +30,7 @@ function mockEmpty() {
 }
 
 describe("getClosingDays", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); _clearClosingDaysCache(); });
 
   it("returns empty array when no blob exists", async () => {
     mockEmpty();
@@ -46,6 +47,7 @@ describe("getClosingDays", () => {
 describe("addClosingDay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _clearClosingDaysCache();
     vi.mocked(put).mockResolvedValue({} as any);
   });
 
@@ -84,6 +86,7 @@ describe("addClosingDay", () => {
 describe("removeClosingDay", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _clearClosingDaysCache();
     vi.mocked(put).mockResolvedValue({} as any);
   });
 
@@ -103,7 +106,7 @@ describe("removeClosingDay", () => {
 });
 
 describe("isSpecialClosingDay", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); _clearClosingDaysCache(); });
 
   it("returns closed:true with reason when date matches", async () => {
     mockBlob([{ date: "2026-03-01", reason: "Offsite" }]);
