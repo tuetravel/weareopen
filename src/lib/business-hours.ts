@@ -53,6 +53,29 @@ export type OpenStatus =
  *  3. Danish public holiday via Kalendarium API
  *  4. Special closing day from Vercel Blob store
  */
+/**
+ * Returns open/closed status for a specific date (YYYY-MM-DD).
+ * Time-of-day checks are skipped — only day-of-week, public holidays,
+ * and special closing days are evaluated.
+ */
+export async function isOpenOnDate(dateStr: string): Promise<OpenStatus> {
+  const date = new Date(`${dateStr}T12:00:00Z`);
+  if (isNaN(date.getTime())) {
+    return { open: false, reason: "outside hours" };
+  }
+
+  const weekday = date.getUTCDay();
+  if (weekday === 0 || weekday === 6) return { open: false, reason: "weekend" };
+
+  const { holiday, name } = await isPublicHoliday(dateStr);
+  if (holiday) return { open: false, reason: "public holiday", ...(name ? { note: name } : {}) };
+
+  const { closed, reason } = await isSpecialClosingDay(dateStr);
+  if (closed) return { open: false, reason: "closing day", ...(reason ? { note: reason } : {}) };
+
+  return { open: true };
+}
+
 export async function isOpen(): Promise<OpenStatus> {
   const { timezone, openHour, closeHour } = await getOpeningHours();
   const { weekday, hour, dateStr } = getTimeParts(timezone);
